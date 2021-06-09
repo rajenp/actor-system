@@ -27,6 +27,7 @@ public final class ActorSystemExceptions {
   }
 
   public static class SystemOfflineException extends IllegalStateException {
+
     public SystemOfflineException(String message) {
       super(message);
     }

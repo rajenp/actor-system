@@ -19,13 +19,11 @@ interface Actor extends Runnable {
 
 final class ActorImpl implements Actor {
 
+  private static final Logger logger = Logger.getLogger(ActorImpl.class.getCanonicalName());
   private final String address;
   private final Mailbox<Message> mailbox;
   private final Consumer<Message> handler;
-
   private final AtomicReference<Thread> runnerThread = new AtomicReference<>();
-
-  private static final Logger logger = Logger.getLogger(ActorImpl.class.getCanonicalName());
 
   ActorImpl(String address, Consumer<Message> handler, Mailbox<Message> mailbox) {
     this.address = address;

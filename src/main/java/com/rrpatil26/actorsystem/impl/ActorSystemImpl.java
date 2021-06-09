@@ -6,7 +6,6 @@ import com.rrpatil26.actorsystem.client.ActorSystemExceptions.NoSuchActorExcepti
 import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOfflineException;
 import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOverloadedException;
 import com.rrpatil26.actorsystem.client.Message;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,22 +16,17 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactory<Message> {
 
+  private static final Logger logger = Logger.getLogger(ActorSystemImpl.class.getCanonicalName());
   private final ExecutorService service;
   private final Map<String, Actor> actors;
   private final int maxAllowedActors;
   private final AtomicBoolean isShutdown = new AtomicBoolean(false);
-
-  private static final Logger logger = Logger.getLogger(ActorSystemImpl.class.getCanonicalName());
 
   public ActorSystemImpl(int size) {
     this.maxAllowedActors = size;
@@ -43,6 +37,10 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
   @Override
   public String registerActor(int mailboxSize, Consumer<Message> messageConsumer)
       throws SystemOverloadedException {
+    if (isShutdown()) {
+      logger.info("System has been shutdown.");
+      throw new SystemOfflineException("System has been shutdown.");
+    }
     if (actors.size() == maxAllowedActors) {
       logger.warning("Actors pool is full. System is receiving too many new actors.");
       throw new SystemOverloadedException(
@@ -57,7 +55,7 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
 
   @Override
   public boolean sendMessage(String address, Message message)
-      throws NoSuchActorException, NoSuchActorException, ActorMailboxFullException {
+      throws NoSuchActorException, ActorMailboxFullException {
     // Allow only internal messages (from known/existing actors) if System has been shutdown
     String name = Thread.currentThread().getName();
     if (this.isShutdown() && !actors.containsKey(name)) {
@@ -78,40 +76,18 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
     service.shutdown();
     logger.info("Actor System is shutting down");
     CompletableFuture<Boolean> future = new CompletableFuture<>();
-    //Cleanup thread
-    new Thread(() -> {
-      synchronized (actors) {
-        List<Actor> busyActors = actors.values().stream().filter(Actor::hasAnyPendingTask).collect(
-            Collectors.toUnmodifiableList());
-        int attempts = 4;
-        while (busyActors.size() > 0 && attempts-- != 0) {
-          logger.info(String.format("[%d]: Some actors are still busy:", attempts) + busyActors);
-          try {
-            // Give it some time and recheck if it's done
-            Thread.sleep(100);
-          } catch (InterruptedException e) {
-            logger.warning(String.format("Shutdown interrupted. %s", e));
-            break;
-          }
-        }
 
-        for (Actor actor : actors.values()) {
-          actor.shutdown();
-        }
-      }
-      try {
-        service.awaitTermination(100, TimeUnit.MILLISECONDS);
-        // Mark clean shutdown
-        future.complete(true);
-      } catch (InterruptedException e) {
-        logger.info("Actor System shutdown timed out.");
-        // Mark dirty/forced shutdown
-      } finally {
-        actors.clear();
-        service.shutdownNow();
-        future.complete(service.isTerminated());
-      }
-    }).start();
+    //Cleanup thread
+    try {
+      Thread cleaner = new Thread(awaitBusyActorsAndShutdownCleaner(future));
+      cleaner.start();
+      // What if cleaner gets stuck? Wait 30sec and kill
+      cleaner.join(30000);
+    } catch (InterruptedException e) {
+      logger.info("Cleaner thread took longer. Terminating now.");
+    } finally {
+      future.complete(false);
+    }
     return future;
   }
 
@@ -128,7 +104,44 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
 
   @Override
   public Mailbox<Message> newMailbox(int mailboxSize) {
-    return new FifoMailbox<Message>(mailboxSize);
+    return new FifoMailbox<>(mailboxSize);
+  }
+
+  private Runnable awaitBusyActorsAndShutdownCleaner(CompletableFuture<Boolean> status) {
+    return () -> {
+      try {
+        synchronized (actors) {
+          List<Actor> busyActors = actors.values().stream().filter(Actor::hasAnyPendingTask)
+              .collect(
+                  Collectors.toUnmodifiableList());
+          int attempts = 4;
+          while (busyActors.size() > 0 && attempts-- != 0) {
+            logger.info(String.format("[%d]: Some actors are still busy:", attempts) + busyActors);
+            try {
+              // Give it some time and recheck if it's done
+              Thread.sleep(100);
+            } catch (InterruptedException e) {
+              logger.warning(String.format("Shutdown interrupted. %s", e));
+              break;
+            }
+          }
+
+          for (Actor actor : actors.values()) {
+            actor.shutdown();
+          }
+        }
+        service.awaitTermination(100, TimeUnit.MILLISECONDS);
+        // Mark clean shutdown
+        status.complete(true);
+      } catch (InterruptedException e) {
+        logger.info("Actor System shutdown timed out.");
+        // Mark dirty/forced shutdown
+      } finally {
+        actors.clear();
+        service.shutdownNow();
+        status.complete(service.isTerminated());
+      }
+    };
   }
 }
 
