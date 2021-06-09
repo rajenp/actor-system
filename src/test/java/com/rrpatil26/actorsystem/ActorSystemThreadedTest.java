@@ -21,6 +21,9 @@ public class ActorSystemThreadedTest {
 
   private ActorSystem actorSystem;
   private static final int MAX_ACTORS = 10;
+  private static final int MAX_MAILBOX_SIZE = 100;
+  private static final int MESSAGES_UPPER_BOUND = 100000;
+
 
   @Before
   public void setUp() {
@@ -34,7 +37,7 @@ public class ActorSystemThreadedTest {
     List<String> actorAddresses = new ArrayList<>();
     AtomicInteger countOfMessagesProcessed = new AtomicInteger();
     for (int i = 0; i < MAX_ACTORS; i++) {
-      actorAddresses.add(actorSystem.registerActor(100, message -> {
+      actorAddresses.add(actorSystem.registerActor(MAX_MAILBOX_SIZE, message -> {
         // Track how many messages processed by the system
         countOfMessagesProcessed.getAndIncrement();
       }));
@@ -42,7 +45,7 @@ public class ActorSystemThreadedTest {
 
     // Act
     ExecutorService scheduler = Executors.newCachedThreadPool();
-    int numberOfMessagesToSend = Math.abs(new Random().nextInt(1000));
+    int numberOfMessagesToSend = Math.abs(new Random().nextInt(MESSAGES_UPPER_BOUND));
     List<Future<Boolean>> futures = new ArrayList<>();
     for (int i = 0; i < numberOfMessagesToSend; i++) {
       // Distribute messages randomly or evenly
@@ -59,6 +62,7 @@ public class ActorSystemThreadedTest {
     }
     scheduler.shutdown();
 
+    // Collect how many messages went through successfully
     int countOfSuccessfullySentMessages = 0;
     for (Future<Boolean> future : futures) {
       if (future.get()) {
@@ -66,13 +70,13 @@ public class ActorSystemThreadedTest {
       }
     }
 
-    //Assert/Verify - sending all succeeded
-    Assert.assertEquals(countOfSuccessfullySentMessages, numberOfMessagesToSend);
+    //Assert/Verify - potentially sending all messages succeed (in an ideal situation)
+    Assert.assertTrue(countOfSuccessfullySentMessages <= numberOfMessagesToSend);
 
     // Shutdown and ensure all messages get processed - even if are in the queue
     Future<Boolean> status = actorSystem.shutdown();
     Assert.assertTrue(status.get());
-    // Ensure total messages processed by system match the sent messages count
+    // No messages should be lost or unprocessed. Messages processed == messages sent count
     Assert.assertEquals(countOfMessagesProcessed.get(), countOfSuccessfullySentMessages);
   }
 

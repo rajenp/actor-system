@@ -59,9 +59,9 @@ public class ActorSystemUnitTest {
   @Test()
   public void testShutdown()
       throws SystemOfflineException, SystemOverloadedException, ActorMailboxFullException, ExecutionException, InterruptedException {
-    String actorAddress = actorSystem.registerActor(1, message -> {
+    actorSystem.registerActor(1, message -> {
     });
-    String actor2Address = actorSystem.registerActor(1, message -> {
+    actorSystem.registerActor(1, message -> {
     });
 
     Future<Boolean> status = actorSystem.shutdown();
