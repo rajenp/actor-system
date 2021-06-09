@@ -3,9 +3,6 @@ package com.rrpatil26.actorsystem.impl;
 import com.rrpatil26.actorsystem.client.ActorSystemExceptions.ActorMailboxFullException;
 import com.rrpatil26.actorsystem.client.Message;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
 
@@ -26,8 +23,6 @@ final class ActorImpl implements Actor {
   private final Mailbox<Message> mailbox;
   private final Consumer<Message> handler;
 
-  private final Lock lock;
-  private final Condition hasNewMessageInTheMailbox;
   private final AtomicReference<Thread> runnerThread = new AtomicReference<>();
 
   private static final Logger logger = Logger.getLogger(ActorImpl.class.getCanonicalName());
@@ -37,9 +32,6 @@ final class ActorImpl implements Actor {
     this.handler = handler;
 
     this.mailbox = mailbox;
-    lock = new ReentrantLock();
-
-    hasNewMessageInTheMailbox = lock.newCondition();
     logger.fine(String.format("Actor created: %s", address));
   }
 
@@ -51,19 +43,12 @@ final class ActorImpl implements Actor {
   @Override
   public boolean addNewMessage(Message message)
       throws ActorMailboxFullException {
-    lock.lock();
-    try {
-      // Adding new message can fail if actor mailbox is full
-      if (!mailbox.addToMailbox(message)) {
-        logger.warning(
-            String.format("Actor %s received messages more that its capacity %s", address,
-                mailbox.getSize()));
-        throw new ActorMailboxFullException(
-            "Actor mailbox full. Retry later: " + mailbox.getSize());
-      }
-      hasNewMessageInTheMailbox.signal();
-    } finally {
-      lock.unlock();
+    if (!mailbox.addToMailbox(message)) {
+      logger.warning(
+          String.format("Actor %s received messages more that its capacity %s", address,
+              mailbox.getSize()));
+      throw new ActorMailboxFullException(
+          "Actor mailbox full. Retry later: " + mailbox.getSize());
     }
     return true;
   }
@@ -74,22 +59,11 @@ final class ActorImpl implements Actor {
   }
 
   private void processMessage() throws InterruptedException {
-    lock.lock();
-    try {
-      // Wait until there is any new message in the mailbox
-      while (!mailbox.hasUnread()) {
-        try {
-          hasNewMessageInTheMailbox.await();
-        } catch (InterruptedException ex) {
-          throw new InterruptedException();
-        }
-      }
+    if (mailbox.hasUnread()) {
       Message message = mailbox.getNextMessage();
       if (message != null) {
         handler.accept(message);
       }
-    } finally {
-      lock.unlock();
     }
   }
 

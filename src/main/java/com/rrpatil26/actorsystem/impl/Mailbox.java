@@ -3,6 +3,7 @@ package com.rrpatil26.actorsystem.impl;
 import com.rrpatil26.actorsystem.client.ActorSystemExceptions.ActorMailboxFullException;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 interface Mailbox<T> {
 
@@ -15,18 +16,21 @@ interface Mailbox<T> {
   boolean addToMailbox(T message) throws ActorMailboxFullException;
 }
 
+/**
+ * Thread safe FIFO Mailbox implementation using ArrayBlockingQueue.
+ */
 class FifoMailbox<T> implements Mailbox<T> {
 
   private int maxCapacity;
 
-  private final Queue<T> queue;
+  private final BlockingQueue<T> queue;
 
   FifoMailbox(int size) {
     this(new ArrayBlockingQueue<>(size, true));
     maxCapacity = size;
   }
 
-  FifoMailbox(Queue<T> queue) {
+  FifoMailbox(BlockingQueue<T> queue) {
     this.queue = queue;
   }
 
