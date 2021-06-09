@@ -6,13 +6,13 @@ import java.util.concurrent.BlockingQueue;
 
 interface Mailbox<T> {
 
-  int getSize();
+  int getMaxCapacity();
 
   boolean hasUnread();
 
-  T getNextMessage();
+  T getNextMessage() throws InterruptedException;
 
-  boolean addToMailbox(T message) throws ActorMailboxFullException;
+  boolean addToMailbox(T message) throws ActorMailboxFullException, InterruptedException;
 }
 
 /**
@@ -33,7 +33,7 @@ class FifoMailbox<T> implements Mailbox<T> {
   }
 
   @Override
-  public int getSize() {
+  public int getMaxCapacity() {
     return this.maxCapacity;
   }
 
@@ -43,15 +43,16 @@ class FifoMailbox<T> implements Mailbox<T> {
   }
 
   @Override
-  public T getNextMessage() {
-    return queue.poll();
+  public T getNextMessage() throws InterruptedException {
+    return queue.take();
   }
 
   @Override
-  public boolean addToMailbox(T message) throws ActorMailboxFullException {
+  public boolean addToMailbox(T message) throws ActorMailboxFullException, InterruptedException {
     if (queue.size() == maxCapacity) {
       throw new ActorMailboxFullException("Mailbox is full. Can't take anymore messages");
     }
-    return queue.offer(message);
+    queue.put(message);
+    return true;
   }
 }

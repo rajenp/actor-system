@@ -57,9 +57,9 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
   public boolean sendMessage(String address, Message message)
       throws NoSuchActorException, ActorMailboxFullException {
     // Allow only internal messages (from known/existing actors) if System has been shutdown
-    String name = Thread.currentThread().getName();
-    if (this.isShutdown() && !actors.containsKey(name)) {
-      logger.info("System has been shutdown. Will only serve pending requests");
+    boolean isInternalMessage = actors.containsKey(Thread.currentThread().getName());
+    if (this.isShutdown() && !isInternalMessage) {
+      logger.warning("System has been shutdown. Will only serve pending requests");
       throw new SystemOfflineException("System has been shutdown.");
     }
     if (!actors.containsKey(address)) {
@@ -125,12 +125,11 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
               break;
             }
           }
-
+          service.awaitTermination(10000, TimeUnit.MILLISECONDS);
           for (Actor actor : actors.values()) {
             actor.shutdown();
           }
         }
-        service.awaitTermination(100, TimeUnit.MILLISECONDS);
         // Mark clean shutdown
         status.complete(true);
       } catch (InterruptedException e) {

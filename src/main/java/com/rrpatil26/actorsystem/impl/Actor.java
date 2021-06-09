@@ -24,11 +24,11 @@ final class ActorImpl implements Actor {
   private final Mailbox<Message> mailbox;
   private final Consumer<Message> handler;
   private final AtomicReference<Thread> runnerThread = new AtomicReference<>();
+  private final ThreadLocal<Boolean> isBusy = ThreadLocal.withInitial(() -> false);
 
   ActorImpl(String address, Consumer<Message> handler, Mailbox<Message> mailbox) {
     this.address = address;
     this.handler = handler;
-
     this.mailbox = mailbox;
     logger.fine(String.format("Actor created: %s", address));
   }
@@ -41,48 +41,54 @@ final class ActorImpl implements Actor {
   @Override
   public boolean addNewMessage(Message message)
       throws ActorMailboxFullException {
-    if (!mailbox.addToMailbox(message)) {
-      logger.warning(
-          String.format("Actor %s received messages more that its capacity %s", address,
-              mailbox.getSize()));
+    try {
+      if (!mailbox.addToMailbox(message)) {
+        logger.warning(
+            String.format("Actor %s received messages more that its capacity %s", address,
+                mailbox.getMaxCapacity()));
+        throw new ActorMailboxFullException(
+            "Actor mailbox full. Retry later: " + mailbox.getMaxCapacity());
+      }
+    } catch (InterruptedException e) {
       throw new ActorMailboxFullException(
-          "Actor mailbox full. Retry later: " + mailbox.getSize());
+          "Something went wrong in delivering message to: " + address);
     }
     return true;
   }
 
   @Override
   public synchronized boolean hasAnyPendingTask() {
-    return mailbox.hasUnread();
+    return mailbox.hasUnread() || isBusy.get();
   }
 
   private void processMessage() throws InterruptedException {
-    if (mailbox.hasUnread()) {
-      Message message = mailbox.getNextMessage();
-      if (message != null) {
-        handler.accept(message);
-      }
+    // Should block until next message
+    Message message = mailbox.getNextMessage();
+    if (message != null) {
+      isBusy.set(true);
+      handler.accept(message);
+      isBusy.set(false);
     }
   }
 
   @Override
   public void shutdown() {
+    logger.fine(String.format("Actor shutting down: %s", address));
     // Ensure we are shutting it down once there are no more pending messages
     assert (!mailbox.hasUnread());
     if (runnerThread.get() != null) {
-      // Stop message processor thread interrupt
+      // Interrupt message processor thread
       runnerThread.get().interrupt();
-      logger.fine(String.format("Actor shutting down: %s", address));
     }
   }
 
   @Override
   public void run() {
-    // Name know runner so that we can allow pending messages even after shutdown is initiated
+    // Name runner thread so that we can allow messages from known actors only after shutdown
     Thread.currentThread().setName(address);
     runnerThread.set(Thread.currentThread());
     try {
-      //Keep processing one message at a time until shutdown
+      //Keep processing one message at a time until Interrupted
       while (!runnerThread.get().isInterrupted()) {
         processMessage();
       }

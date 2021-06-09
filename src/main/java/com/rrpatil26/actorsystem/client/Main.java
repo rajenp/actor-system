@@ -8,7 +8,7 @@ import java.util.Base64;
 public class Main {
 
   public static void main(String[] args)
-      throws SystemOverloadedException {
+      throws SystemOverloadedException, ActorMailboxFullException {
     ActorSystem actorSystem = ActorSystemFactory.newInstance(10);
 
     // Add printer
@@ -43,8 +43,10 @@ public class Main {
       System.out
           .println("Encoded: " + encoded);
       try {
+        // Try to late deliver this after system might have been asked to shutdown. This should work
+        Thread.sleep(10000);
         actorSystem.sendMessage(loggerAddress, new Message("encoded(" + encoded + ")"));
-      } catch (ActorMailboxFullException e) {
+      } catch (ActorMailboxFullException | InterruptedException e) {
         // Handle what to do when actor couldn't process the message
         e.printStackTrace();
       }
@@ -76,6 +78,7 @@ public class Main {
     } finally {
       actorSystem.shutdown();
     }
-    // actorSystem.sendMessage(printerAddress, new Message("This is the message after shutdown"));
+    // This should fail and report that it can't accept new messages
+    actorSystem.sendMessage(printerAddress, new Message("This is the message after shutdown"));
   }
 }
