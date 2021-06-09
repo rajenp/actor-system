@@ -10,6 +10,8 @@ import com.rrpatil26.actorsystem.client.Message;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,7 +60,7 @@ public class ActorSystemUnitTest {
 
   @Test()
   public void testShutdown()
-      throws SystemOfflineException, SystemOverloadedException, ActorMailboxFullException, ExecutionException, InterruptedException {
+      throws SystemOfflineException, SystemOverloadedException, ActorMailboxFullException, ExecutionException, InterruptedException, TimeoutException {
     actorSystem.registerActor(1, message -> {
     });
     actorSystem.registerActor(1, message -> {
@@ -66,7 +68,7 @@ public class ActorSystemUnitTest {
 
     Future<Boolean> status = actorSystem.shutdown();
     Assert.assertTrue(actorSystem.isShutdown());
-    Assert.assertTrue(status.get());
+    Assert.assertTrue(status.get(5, TimeUnit.SECONDS));
   }
 
   @Test(expected = SystemOfflineException.class)

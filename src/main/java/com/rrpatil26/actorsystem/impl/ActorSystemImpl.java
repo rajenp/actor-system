@@ -7,6 +7,7 @@ import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOfflineExcep
 import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOverloadedException;
 import com.rrpatil26.actorsystem.client.Message;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +23,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactory<Message> {
 
@@ -73,37 +75,42 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
   @Override
   public Future<Boolean> shutdown() {
     isShutdown.set(true);
+    service.shutdown();
+    logger.info("Actor System is shutting down");
     CompletableFuture<Boolean> future = new CompletableFuture<>();
     //Cleanup thread
     new Thread(() -> {
-      logger.info("Actor System is shutting down");
-      service.shutdown();
-      while (actors.values().stream().anyMatch(Actor::hasAnyPendingTask)) {
-        try {
-          // Give it some time and recheck if it's done
-          Thread.sleep(100);
-        } catch (InterruptedException e) {
-          logger.warning(String.format("Shutdown interrupted. %s", e));
-          break;
+      synchronized (actors) {
+        List<Actor> busyActors = actors.values().stream().filter(Actor::hasAnyPendingTask).collect(
+            Collectors.toUnmodifiableList());
+        int attempts = 4;
+        while (busyActors.size() > 0 && attempts-- != 0) {
+          logger.info(String.format("[%d]: Some actors are still busy:", attempts) + busyActors);
+          try {
+            // Give it some time and recheck if it's done
+            Thread.sleep(100);
+          } catch (InterruptedException e) {
+            logger.warning(String.format("Shutdown interrupted. %s", e));
+            break;
+          }
+        }
+
+        for (Actor actor : actors.values()) {
+          actor.shutdown();
         }
       }
-      for (Actor actor : actors.values()) {
-        actor.shutdown();
-      }
-
       try {
-        service.awaitTermination(60, TimeUnit.SECONDS);
+        service.awaitTermination(100, TimeUnit.MILLISECONDS);
+        // Mark clean shutdown
+        future.complete(true);
       } catch (InterruptedException e) {
         logger.info("Actor System shutdown timed out.");
         // Mark dirty/forced shutdown
-        future.complete(false);
       } finally {
+        actors.clear();
         service.shutdownNow();
-        assert service.isTerminated();
+        future.complete(service.isTerminated());
       }
-      // Mark clean shutdown
-      future.complete(true);
-      actors.clear();
     }).start();
     return future;
   }
