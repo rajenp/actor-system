@@ -19,11 +19,10 @@ import org.junit.Test;
 
 public class ActorSystemThreadedTest {
 
-  private ActorSystem actorSystem;
   private static final int MAX_ACTORS = 10;
   private static final int MAX_MAILBOX_SIZE = 100;
   private static final int MESSAGES_UPPER_BOUND = 100000;
-
+  private ActorSystem actorSystem;
 
   @Before
   public void setUp() {

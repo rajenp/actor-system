@@ -60,7 +60,7 @@ public class ActorSystemUnitTest {
 
   @Test()
   public void testShutdown()
-      throws SystemOfflineException, SystemOverloadedException, ActorMailboxFullException, ExecutionException, InterruptedException, TimeoutException {
+      throws SystemOfflineException, SystemOverloadedException, ExecutionException, InterruptedException, TimeoutException {
     actorSystem.registerActor(1, message -> {
     });
     actorSystem.registerActor(1, message -> {
