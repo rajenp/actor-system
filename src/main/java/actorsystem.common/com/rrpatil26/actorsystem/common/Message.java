@@ -2,20 +2,20 @@ package com.rrpatil26.actorsystem.common;
 
 public class Message<T> {
 
-  private final T messageBody;
+  private final T payload;
 
-  public Message(T messageBody) {
-    this.messageBody = messageBody;
+  public Message(T payload) {
+    this.payload = payload;
   }
 
-  public T getMessageBody() {
-    return messageBody;
+  public T getPayload() {
+    return payload;
   }
 
   @Override
   public String toString() {
     return "Message{" +
-        "messageBody='" + messageBody + '\'' +
+        "payload='" + payload + '\'' +
         '}';
   }
 }

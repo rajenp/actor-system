@@ -31,9 +31,9 @@ public class Main {
       System.out.println("Decrypting message: " + message);
       try {
         actorSystem.sendMessage(loggerAddress, new Message<String>(
-            "decrypt(" + message.getMessageBody() + ")"));
+            "decrypt(" + message.getPayload() + ")"));
         actorSystem.sendMessage(printerAddress, new Message<String>(
-            "print(" + message.getMessageBody() + ")"));
+            "print(" + message.getPayload() + ")"));
       } catch (ActorMailboxFullException e) {
         // Handle what to do when actor couldn't process the message
         e.printStackTrace();
@@ -41,17 +41,17 @@ public class Main {
     });
 
     String base64encoder = actorSystem.registerActor(2, message -> {
-      String payload = (String) message.getMessageBody();
+      String payload = (String) message.getPayload();
       // Encode
       String encoded = Base64.getEncoder().encodeToString(payload.getBytes(
           StandardCharsets.UTF_16));
       System.out
-          .println("Encoded: " + encoded);
+          .println("Encoded: " + payload + " to: " + encoded);
       try {
         // Try to late deliver this after system might have been asked to shutdown. This should work
         Thread.sleep(10000);
         actorSystem.sendMessage(loggerAddress,
-            new Message<>("encoded(" + encoded + ")"));
+            new Message<>("This is delayed and internal message."));
       } catch (ActorMailboxFullException | InterruptedException e) {
         // Handle what to do when actor couldn't process the message
         e.printStackTrace();
@@ -59,12 +59,12 @@ public class Main {
     });
 
     String base64decoder = actorSystem.registerActor(2, message -> {
-      String payload = (String) message.getMessageBody();
+      String payload = (String) message.getPayload();
       // Encode
       String decoded = new String(Base64.getDecoder().decode(payload),
           StandardCharsets.UTF_16);
       System.out
-          .println("Decoded: " + decoded);
+          .println("Decoded: " + payload + " to: " + decoded);
       try {
         actorSystem.sendMessage(loggerAddress,
             new Message<>("decoded(" + decoded + ")"));
