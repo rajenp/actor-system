@@ -1,11 +1,11 @@
 package com.rrpatil26.actorsystem.impl;
 
-import com.rrpatil26.actorsystem.client.ActorSystem;
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.ActorMailboxFullException;
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.NoSuchActorException;
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOfflineException;
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOverloadedException;
-import com.rrpatil26.actorsystem.client.Message;
+import com.rrpatil26.actorsystem.common.ActorSystem;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.ActorMailboxFullException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.NoSuchActorException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.SystemOfflineException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.SystemOverloadedException;
+import com.rrpatil26.actorsystem.common.Message;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

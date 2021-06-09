@@ -1,6 +1,6 @@
 package com.rrpatil26.actorsystem.impl;
 
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.ActorMailboxFullException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.ActorMailboxFullException;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 

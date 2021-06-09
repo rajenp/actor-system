@@ -1,5 +1,6 @@
 package com.rrpatil26.actorsystem.client;
 
+import com.rrpatil26.actorsystem.common.ActorSystem;
 import com.rrpatil26.actorsystem.impl.ActorSystemImpl;
 
 public final class ActorSystemFactory {

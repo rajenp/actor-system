@@ -1,7 +1,7 @@
 package com.rrpatil26.actorsystem.impl;
 
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.ActorMailboxFullException;
-import com.rrpatil26.actorsystem.client.Message;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.ActorMailboxFullException;
+import com.rrpatil26.actorsystem.common.Message;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Logger;

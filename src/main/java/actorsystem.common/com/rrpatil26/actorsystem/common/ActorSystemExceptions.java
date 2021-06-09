@@ -1,4 +1,4 @@
-package com.rrpatil26.actorsystem.client;
+package com.rrpatil26.actorsystem.common;
 
 import java.util.NoSuchElementException;
 

@@ -1,9 +1,10 @@
-package com.rrpatil26.actorsystem.client;
+package com.rrpatil26.actorsystem.common;
 
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.ActorMailboxFullException;
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.NoSuchActorException;
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOfflineException;
-import com.rrpatil26.actorsystem.client.ActorSystemExceptions.SystemOverloadedException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.ActorMailboxFullException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.NoSuchActorException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.SystemOfflineException;
+import com.rrpatil26.actorsystem.common.ActorSystemExceptions.SystemOverloadedException;
+import com.rrpatil26.actorsystem.common.Message;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -17,7 +18,7 @@ public interface ActorSystem {
    * @return String representation of UUID as a unique address assigned to this new Actor
    * @throws SystemOverloadedException If System is already loaded and have no capacity left
    */
-  String registerActor(int mailboxSize, Consumer<Message> messageConsumer)
+  String registerActor(int mailboxSize, Consumer<com.rrpatil26.actorsystem.common.Message> messageConsumer)
       throws SystemOverloadedException;
 
   /**
