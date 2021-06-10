@@ -1,4 +1,4 @@
-package com.rrpatil26.actorsystem;
+package com.rrpatil26.actorsystem.test;
 
 import com.rrpatil26.actorsystem.client.ActorSystemFactory;
 import com.rrpatil26.actorsystem.common.ActorSystem;
