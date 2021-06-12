@@ -4,7 +4,6 @@ import com.rrpatil26.actorsystem.common.ActorSystemExceptions.ActorMailboxFullEx
 import com.rrpatil26.actorsystem.common.ActorSystemExceptions.NoSuchActorException;
 import com.rrpatil26.actorsystem.common.ActorSystemExceptions.SystemOfflineException;
 import com.rrpatil26.actorsystem.common.ActorSystemExceptions.SystemOverloadedException;
-import com.rrpatil26.actorsystem.common.Message;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -18,7 +17,8 @@ public interface ActorSystem {
    * @return String representation of UUID as a unique address assigned to this new Actor
    * @throws SystemOverloadedException If System is already loaded and have no capacity left
    */
-  String registerActor(int mailboxSize, Consumer<com.rrpatil26.actorsystem.common.Message> messageConsumer)
+  String registerActor(int mailboxSize,
+      Consumer<Message> messageConsumer)
       throws SystemOverloadedException;
 
   /**
@@ -47,5 +47,41 @@ public interface ActorSystem {
    * @return True if System has been shutdown.
    */
   boolean isShutdown();
+
+  default ActorRegistrationBuilder newActorRegistrationBuilder() {
+    return new ActorRegistrationBuilderImpl(this);
+  }
 }
 
+class ActorRegistrationBuilderImpl implements ActorRegistrationBuilder {
+
+  private ActorSystem actorSystem;
+  private int mailboxSize;
+  private Consumer<Message> messageHandler;
+
+  ActorRegistrationBuilderImpl(ActorSystem actorSystem) {
+    this.actorSystem = actorSystem;
+  }
+
+  @Override
+  public ActorRegistrationBuilder withMailboxSize(int mailboxSize) {
+    this.mailboxSize = mailboxSize;
+    return this;
+
+  }
+
+  @Override
+  public ActorRegistrationBuilder withMessageHandler(Consumer<Message> messageHandler) {
+    this.messageHandler = messageHandler;
+    return this;
+  }
+
+  @Override
+  public String register() throws IllegalArgumentException, SystemOverloadedException {
+    if (this.mailboxSize < 0 || this.messageHandler == null) {
+      throw new IllegalArgumentException(
+          "Builder error: please set correct mailbox size and handler before registration");
+    }
+    return actorSystem.registerActor(this.mailboxSize, this.messageHandler);
+  }
+}

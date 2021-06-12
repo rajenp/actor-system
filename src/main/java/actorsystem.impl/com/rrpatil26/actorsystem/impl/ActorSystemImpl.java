@@ -72,6 +72,9 @@ public class ActorSystemImpl implements ActorSystem, ActorFactory, MailboxFactor
 
   @Override
   public Future<Boolean> shutdown() {
+    if (isShutdown.get()) {
+      return CompletableFuture.completedFuture(service.isShutdown());
+    }
     isShutdown.set(true);
     service.shutdown();
     logger.info("Actor System is shutting down");

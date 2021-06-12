@@ -29,8 +29,9 @@ public class ActorSystemUnitTest {
   public void testActorRegistration_success() throws SystemOverloadedException {
     int count = 10;
     while (count-- > 0) {
-      Assert.assertNotNull(actorSystem.registerActor(1, message -> {
-      }));
+      Assert.assertNotNull(actorSystem.newActorRegistrationBuilder().withMailboxSize(1)
+          .withMessageHandler(message -> {
+          }).register());
     }
   }
 
